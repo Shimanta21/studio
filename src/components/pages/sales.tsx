@@ -33,7 +33,7 @@ const salesFormSchema = z.object({
   saleDate: z.date({
     required_error: 'A sale date is required.',
   }),
-  customerName: z.string().min(1, 'Customer name is required.'),
+  customerName: z.string().min(1, 'Please select a customer.'),
   items: z.array(saleItemSchema).min(1, 'Please add at least one product.'),
 });
 
@@ -50,7 +50,7 @@ type SaleSummary = {
 
 
 export default function SalesPage() {
-  const { products, addBulkSale } = useApp();
+  const { products, addBulkSale, customers } = useApp();
   const { toast } = useToast();
   const [lastSaleSummary, setLastSaleSummary] = React.useState<SaleSummary | null>(null);
   const [notificationState, setNotificationState] = React.useState({
@@ -219,17 +219,28 @@ export default function SalesPage() {
                         )}
                     />
                     <FormField
-                        control={form.control}
-                        name="customerName"
-                        render={({ field }) => (
+                      control={form.control}
+                      name="customerName"
+                      render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Customer Name</FormLabel>
+                          <FormLabel>Customer Name</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                            <Input placeholder="Enter customer name" {...field} />
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a customer" />
+                              </SelectTrigger>
                             </FormControl>
-                            <FormMessage />
+                            <SelectContent>
+                              {customers.map((customer) => (
+                                <SelectItem key={customer.id} value={customer.name}>
+                                  {customer.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
                         </FormItem>
-                        )}
+                      )}
                     />
                     </div>
 
