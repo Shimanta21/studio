@@ -21,7 +21,9 @@ import {
   PlusSquare,
   ShoppingCart,
   Bell,
+  Loader2,
 } from 'lucide-react';
+import { useApp } from '@/context/app-context';
 
 const menuItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -33,6 +35,7 @@ const menuItems = [
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { isLoading } = useApp();
 
   return (
     <SidebarProvider>
@@ -68,7 +71,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
            </div>
         </header>
         <main className="flex-1 p-4 md:p-6 lg:p-8">
-            {children}
+            {isLoading ? (
+                <div className="flex justify-center items-center h-full w-full">
+                    <Loader2 className="h-16 w-16 animate-spin text-primary" />
+                </div>
+            ) : (
+                children
+            )}
         </main>
       </SidebarInset>
     </SidebarProvider>

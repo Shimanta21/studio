@@ -50,7 +50,7 @@ type SaleSummary = {
 
 
 export default function SalesPage() {
-  const { products, addSale } = useApp();
+  const { products, addBulkSale } = useApp();
   const { toast } = useToast();
   const [lastSaleSummary, setLastSaleSummary] = React.useState<SaleSummary | null>(null);
   const [notificationState, setNotificationState] = React.useState({
@@ -96,7 +96,7 @@ export default function SalesPage() {
     }
   };
 
-  function onSubmit(values: z.infer<typeof salesFormSchema>) {
+  async function onSubmit(values: z.infer<typeof salesFormSchema>) {
     let hasError = false;
     
     const productIds = values.items.map(item => item.productId);
@@ -120,37 +120,51 @@ export default function SalesPage() {
 
     if (hasError) return;
 
-    values.items.forEach(item => {
-      addSale(item.productId, item.quantity, values.saleDate, values.customerName);
-    });
+    try {
+        await addBulkSale({
+            customerName: values.customerName,
+            saleDate: values.saleDate,
+            items: values.items.map(item => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                price: products.find(p => p.id === item.productId)!.price
+            }))
+        });
 
-    const summaryItems = values.items.map(item => {
-      const product = products.find(p => p.id === item.productId)!;
-      return {
-          productName: product.name,
-          quantity: item.quantity,
-          price: product.price,
-          total: item.quantity * product.price,
-      };
-    });
-    const totalAmount = summaryItems.reduce((sum, item) => sum + item.total, 0);
-    setLastSaleSummary({
-        customerName: values.customerName,
-        items: summaryItems,
-        totalAmount: totalAmount,
-    });
-    setNotificationState({ isLoading: false, message: null, error: null });
-    
-    const totalItems = values.items.reduce((sum, item) => sum + item.quantity, 0);
-    toast({
-      title: 'Sales Recorded Successfully',
-      description: `Recorded sales for ${values.items.length} product(s), totaling ${totalItems} items for ${values.customerName}.`,
-    });
-    form.reset({
-      saleDate: new Date(),
-      customerName: '',
-      items: [{ productName: '', productId: '', quantity: 1, price: 0 }],
-    });
+        const summaryItems = values.items.map(item => {
+        const product = products.find(p => p.id === item.productId)!;
+        return {
+            productName: product.name,
+            quantity: item.quantity,
+            price: product.price,
+            total: item.quantity * product.price,
+        };
+        });
+        const totalAmount = summaryItems.reduce((sum, item) => sum + item.total, 0);
+        setLastSaleSummary({
+            customerName: values.customerName,
+            items: summaryItems,
+            totalAmount: totalAmount,
+        });
+        setNotificationState({ isLoading: false, message: null, error: null });
+        
+        const totalItems = values.items.reduce((sum, item) => sum + item.quantity, 0);
+        toast({
+        title: 'Sales Recorded Successfully',
+        description: `Recorded sales for ${values.items.length} product(s), totaling ${totalItems} items for ${values.customerName}.`,
+        });
+        form.reset({
+        saleDate: new Date(),
+        customerName: '',
+        items: [{ productName: '', productId: '', quantity: 1, price: 0 }],
+        });
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Failed to Record Sale',
+            description: error.message || "An unexpected error occurred.",
+        });
+    }
   }
   
   return (
