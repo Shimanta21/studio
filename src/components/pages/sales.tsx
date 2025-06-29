@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -19,8 +20,10 @@ import { useToast } from '@/hooks/use-toast';
 
 
 const saleItemSchema = z.object({
-  productId: z.string().min(1, 'Please select a product.'),
+  productName: z.string().min(1, { message: "Please select a product." }),
+  productId: z.string().min(1, { message: "Please select a batch." }),
   quantity: z.coerce.number().min(1, 'Quantity must be at least 1.'),
+  price: z.coerce.number().optional(),
 });
 
 const salesFormSchema = z.object({
@@ -38,7 +41,7 @@ export default function SalesPage() {
     resolver: zodResolver(salesFormSchema),
     defaultValues: {
       saleDate: new Date(),
-      items: [{ productId: '', quantity: 1 }],
+      items: [{ productName: '', productId: '', quantity: 1, price: 0 }],
     },
   });
 
@@ -46,6 +49,12 @@ export default function SalesPage() {
     control: form.control,
     name: 'items',
   });
+  
+  const uniqueProductNames = React.useMemo(() => {
+    return [...new Set(products.map(p => p.name))];
+  }, [products]);
+
+  const selectedProductNames = form.watch('items').map(item => item.productName);
 
   function onSubmit(values: z.infer<typeof salesFormSchema>) {
     let hasError = false;
@@ -55,7 +64,7 @@ export default function SalesPage() {
     if(duplicateIds.length > 0) {
         values.items.forEach((item, index) => {
             if (duplicateIds.includes(item.productId)) {
-                form.setError(`items.${index}.productId`, { type: 'manual', message: 'Duplicate product selected.' });
+                form.setError(`items.${index}.productId`, { type: 'manual', message: 'Duplicate batch selected.' });
                 hasError = true;
             }
         });
@@ -82,12 +91,10 @@ export default function SalesPage() {
     });
     form.reset({
       saleDate: new Date(),
-      items: [{ productId: '', quantity: 1 }],
+      items: [{ productName: '', productId: '', quantity: 1, price: 0 }],
     });
   }
   
-  const selectedProductIds = form.watch('items').map(item => item.productId);
-
   return (
     <Card className="max-w-4xl mx-auto">
       <CardHeader>
@@ -141,71 +148,129 @@ export default function SalesPage() {
             </div>
 
             <div className="space-y-4">
-              {fields.map((field, index) => (
-                <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.productId`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Product</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+              {fields.map((field, index) => {
+                const selectedProductName = form.watch(`items.${index}.productName`);
+                const availableBatches = products.filter(p => p.name === selectedProductName);
+                
+                return (
+                  <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-1">
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.productName`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Product</FormLabel>
+                             <Select onValueChange={(value) => {
+                                field.onChange(value);
+                                form.setValue(`items.${index}.productId`, '');
+                                form.setValue(`items.${index}.price`, 0);
+                                form.clearErrors(`items.${index}.productId`);
+                              }} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a product" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {uniqueProductNames.map(name => (
+                                  <SelectItem 
+                                      key={name} 
+                                      value={name} 
+                                      disabled={selectedProductNames.includes(name) && field.value !== name}
+                                  >
+                                    {name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.productId`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Batch Number</FormLabel>
+                            <Select 
+                                onValueChange={(value) => {
+                                  field.onChange(value);
+                                  const product = products.find(p => p.id === value);
+                                  form.setValue(`items.${index}.price`, product?.price);
+                                }} 
+                                value={field.value}
+                                disabled={!selectedProductName}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a batch" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {availableBatches.map(product => (
+                                  <SelectItem 
+                                      key={product.id} 
+                                      value={product.id} 
+                                      disabled={product.stockInHand === 0}
+                                  >
+                                    {product.batchNumber} ({product.stockInHand} in stock)
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.quantity`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Quantity</FormLabel>
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a product" />
-                              </SelectTrigger>
+                              <Input type="number" placeholder="1" {...field} />
                             </FormControl>
-                            <SelectContent>
-                              {products.map(product => (
-                                <SelectItem 
-                                    key={product.id} 
-                                    value={product.id} 
-                                    disabled={product.stockInHand === 0 || (selectedProductIds.includes(product.id) && field.value !== product.id)}
-                                >
-                                  {product.name} ({product.stockInHand} in stock)
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.quantity`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Quantity</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="1" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.price`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Price (₹)</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="0.00" disabled value={field.value || 0} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => remove(index)}
+                      disabled={fields.length <= 1}
+                      className="mt-8 text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Remove item</span>
+                    </Button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => remove(index)}
-                    disabled={fields.length <= 1}
-                    className="mt-8 text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Remove item</span>
-                  </Button>
-                </div>
-              ))}
+                )
+              })}
             </div>
             
             <div className="flex justify-between items-center">
                 <Button
                     type="button"
                     variant="outline"
-                    onClick={() => append({ productId: '', quantity: 1 })}
+                    onClick={() => append({ productName: '', productId: '', quantity: 1, price: 0 })}
                 >
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add Another Product
@@ -220,3 +285,4 @@ export default function SalesPage() {
     </Card>
   );
 }
+
