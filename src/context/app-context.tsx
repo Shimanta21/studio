@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import type { Product, Sale } from '@/lib/types';
 import { format } from 'date-fns';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import {
   collection,
   onSnapshot,
@@ -18,6 +18,14 @@ import {
 } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { seedDatabase } from '@/lib/seed';
+import {
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithRedirect,
+  signOut as firebaseSignOut,
+  type User,
+} from 'firebase/auth';
+import { usePathname, useRouter } from 'next/navigation';
 
 interface BulkSaleData {
     customerName: string;
@@ -30,27 +38,64 @@ interface BulkSaleData {
 }
 
 interface AppContextType {
+  user: User | null;
   products: Product[];
   sales: Sale[];
   isLoading: boolean;
+  appInitialized: boolean;
   addProduct: (product: Omit<Product, 'id' | 'stockInHand' | 'itemsSold' | 'receivedLog'> & { initialStock: number }) => Promise<void>;
   addStock: (productId: string, quantity: number, date: Date) => Promise<void>;
   addBulkSale: (saleData: BulkSaleData) => Promise<void>;
   getDailySales: (date: Date) => Sale[];
+  signInWithGoogle: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppContextProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [appInitialized, setAppInitialized] = useState(false);
   const { toast } = useToast();
   const seedingRef = useRef(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    const q = query(collection(db, 'products'), orderBy('name', 'asc'));
-    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (!appInitialized) {
+        setAppInitialized(true);
+      }
+      setIsLoading(false);
+
+      if (currentUser) {
+        if (pathname === '/login') {
+          router.push('/');
+        }
+      } else {
+        if (pathname !== '/login') {
+          router.push('/login');
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [router, pathname, appInitialized]);
+
+  useEffect(() => {
+    if (!user) {
+      setProducts([]);
+      setSales([]);
+      return;
+    };
+
+    setIsLoading(true);
+
+    const productsQuery = query(collection(db, 'products'), orderBy('name', 'asc'));
+    const unsubscribeProducts = onSnapshot(productsQuery, async (querySnapshot) => {
       if (querySnapshot.empty && !seedingRef.current) {
         seedingRef.current = true;
         setIsLoading(true);
@@ -58,7 +103,6 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
         toast({ title: "Welcome!", description: "Setting up sample data for you..." });
         await seedDatabase(db);
         toast({ title: "Setup Complete!", description: "Sample data has been added to your database." });
-        // The listener will be automatically called again with the new data.
         return;
       }
 
@@ -67,19 +111,15 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
         ...doc.data(),
       } as Product));
       setProducts(productsData);
-      if (isLoading) setIsLoading(false);
+      setIsLoading(false);
     }, (error) => {
       console.error("Error fetching products: ", error);
       toast({ variant: 'destructive', title: "Database Error", description: "Could not fetch products."});
       setIsLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [isLoading, toast]);
-
-  useEffect(() => {
-    const q = query(collection(db, 'sales'), orderBy('saleDate', 'desc'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const salesQuery = query(collection(db, 'sales'), orderBy('saleDate', 'desc'));
+    const unsubscribeSales = onSnapshot(salesQuery, (querySnapshot) => {
       const salesData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
@@ -90,10 +130,37 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
         toast({ variant: 'destructive', title: "Database Error", description: "Could not fetch sales."});
     });
 
-    return () => unsubscribe();
+    return () => {
+        unsubscribeProducts();
+        unsubscribeSales();
+    };
+  }, [user, toast]);
+
+  const signInWithGoogle = useCallback(async () => {
+    setIsLoading(true);
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithRedirect(auth, provider);
+    } catch (error) {
+      console.error("Error signing in with Google: ", error);
+      toast({ variant: 'destructive', title: "Sign-in Error", description: "Could not sign in with Google."});
+      setIsLoading(false);
+    }
   }, [toast]);
 
+  const signOut = useCallback(async () => {
+    try {
+      await firebaseSignOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error("Error signing out: ", error);
+      toast({ variant: 'destructive', title: "Sign-out Error", description: "Could not sign out."});
+    }
+  }, [router, toast]);
+
+
   const addProduct = useCallback(async (productData: Omit<Product, 'id' | 'stockInHand' | 'itemsSold' | 'receivedLog'> & { initialStock: number }) => {
+    if (!user) { toast({ variant: 'destructive', title: "Not Authenticated", description: "You must be logged in to add a product."}); return; }
     try {
       await addDoc(collection(db, 'products'), {
         name: productData.name,
@@ -110,9 +177,10 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
         console.error("Error adding product: ", error);
         toast({ variant: 'destructive', title: "Error", description: "Could not add the new product."});
     }
-  }, [toast]);
+  }, [user, toast]);
 
   const addStock = useCallback(async (productId: string, quantity: number, date: Date) => {
+    if (!user) { toast({ variant: 'destructive', title: "Not Authenticated", description: "You must be logged in to add stock."}); return; }
     const productRef = doc(db, 'products', productId);
     try {
       const product = products.find(p => p.id === productId);
@@ -128,9 +196,10 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
         console.error("Error adding stock: ", error);
         toast({ variant: 'destructive', title: "Error", description: "Could not update the stock."});
     }
-  }, [products, toast]);
+  }, [user, products, toast]);
   
   const addBulkSale = useCallback(async (saleData: BulkSaleData) => {
+    if (!user) { toast({ variant: 'destructive', title: "Not Authenticated", description: "You must be logged in to record a sale."}); return; }
     const batch = writeBatch(db);
 
     for (const item of saleData.items) {
@@ -167,7 +236,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
         toast({ variant: 'destructive', title: "Error", description: "Failed to record the sale. The transaction was rolled back."});
         throw error;
     }
-  }, [products, toast]);
+  }, [user, products, toast]);
 
 
   const getDailySales = useCallback((date: Date) => {
@@ -176,14 +245,18 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   }, [sales]);
 
   const value = useMemo(() => ({
+    user,
     products,
     sales,
     isLoading,
+    appInitialized,
     addProduct,
     addStock,
     addBulkSale,
     getDailySales,
-  }), [products, sales, isLoading, addProduct, addStock, addBulkSale, getDailySales]);
+    signInWithGoogle,
+    signOut,
+  }), [user, products, sales, isLoading, appInitialized, addProduct, addStock, addBulkSale, getDailySales, signInWithGoogle, signOut]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
