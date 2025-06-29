@@ -27,6 +27,18 @@ const firebaseConfig = {
 };
 ```
 
+## Initializing Firestore Database
+
+Before your app can store and retrieve data, you must create the Firestore database instance in your Firebase project.
+
+1.  **Go to Firebase Console**: Navigate to your project at [https://console.firebase.google.com/](https://console.firebase.google.com/).
+2.  **Open Firestore**: In the left-hand navigation menu, under **Build**, click on **Firestore Database**.
+3.  **Create Database**: Click the **Create database** button.
+4.  **Start in Test Mode**: You will be prompted to set up security rules. For development, select **Start in test mode**. This will allow your application to read and write to the database without any restrictions. Click **Next**.
+5.  **Choose a Location**: Select a Cloud Firestore location. Choose a region that is geographically close to you and your users. Click **Enable**.
+
+Once the database is created, your application will be able to connect to it. The first time you run the app, it will automatically populate the database with sample data.
+
 ## Creating a User for Login
 
 Since this is a single-user application without a public sign-up page, you need to create your user credentials directly in the Firebase console.
