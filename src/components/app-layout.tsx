@@ -39,10 +39,10 @@ import { useApp } from '@/context/app-context';
 
 const menuItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/customers', label: 'Customers', icon: Users },
+  { href: '/sales', label: 'Sales', icon: ShoppingCart },
   { href: '/inventory', label: 'Inventory', icon: Boxes },
   { href: '/stock-entry', label: 'Stock Entry', icon: PlusSquare },
-  { href: '/sales', label: 'Sales', icon: ShoppingCart },
-  { href: '/customers', label: 'Customers', icon: Users },
   { href: '/notifications', label: 'Notifications', icon: Bell },
 ];
 
