@@ -11,7 +11,7 @@ interface AppContextType {
   sales: Sale[];
   addProduct: (product: Omit<Product, 'id' | 'stockInHand' | 'itemsSold' | 'receivedLog'> & { initialStock: number }) => void;
   addStock: (productId: string, quantity: number, date: Date) => void;
-  addSale: (productId: string, quantity: number, date: Date) => void;
+  addSale: (productId: string, quantity: number, date: Date, customerName: string) => void;
   getDailySales: (date: Date) => Sale[];
 }
 
@@ -51,7 +51,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const addSale = (productId: string, quantity: number, date: Date) => {
+  const addSale = (productId: string, quantity: number, date: Date, customerName: string) => {
     const product = products.find(p => p.id === productId);
     if (!product || product.stockInHand < quantity) {
       // In a real app, you'd throw an error here to be caught by the form
@@ -63,6 +63,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
       id: `sale_${Date.now()}`,
       productId,
       productName: product.name,
+      customerName,
       quantity,
       saleDate: format(date, 'yyyy-MM-dd'),
       totalAmount: product.price * quantity,

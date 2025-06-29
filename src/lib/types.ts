@@ -17,6 +17,7 @@ export type Sale = {
   id: string;
   productId: string;
   productName: string;
+  customerName: string;
   quantity: number;
   saleDate: string; // YYYY-MM-DD
   totalAmount: number;
