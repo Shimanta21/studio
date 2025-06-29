@@ -17,14 +17,9 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { CalendarIcon, PackagePlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import type { Category, SubCategory } from '@/lib/types';
+import type { Category } from '@/lib/types';
 
 const allCategories: Category[] = ["Medicines & Pet Foods", "Vaccines", "Accessories"];
-const subCategories: Record<Category, SubCategory[]> = {
-  "Medicines & Pet Foods": ["Expiry", "Non-expiry"],
-  "Vaccines": ["Canine", "Poultry", "Misc"],
-  "Accessories": ["Non-expiry"],
-};
 
 const stockFormSchema = z.object({
   productId: z.string(),
@@ -35,7 +30,7 @@ const stockFormSchema = z.object({
     name: z.string(),
     price: z.coerce.number(),
     category: z.string(),
-    subCategory: z.string(),
+    batchNumber: z.string().min(1, 'Batch number is required.'),
     expiryDate: z.date().optional(),
   }).optional(),
 });
@@ -64,12 +59,10 @@ export default function StockEntryPage() {
         name: '',
         price: 0,
         category: undefined,
-        subCategory: undefined,
+        batchNumber: '',
       }
     },
   });
-
-  const selectedCategory = form.watch('newProduct.category') as Category | undefined;
 
   function onSubmit(values: z.infer<typeof stockFormSchema>) {
     if (values.isNewProduct && values.newProduct) {
@@ -77,7 +70,7 @@ export default function StockEntryPage() {
           name: values.newProduct.name,
           price: values.newProduct.price,
           category: values.newProduct.category as Category,
-          subCategory: values.newProduct.subCategory as SubCategory,
+          batchNumber: values.newProduct.batchNumber,
           initialStock: values.quantity,
           expiryDate: values.newProduct.expiryDate ? format(values.newProduct.expiryDate, 'yyyy-MM-dd') : undefined,
       });
@@ -155,13 +148,8 @@ export default function StockEntryPage() {
                             </Select>
                         <FormMessage /></FormItem>
                     )}/>
-                    <FormField control={form.control} name="newProduct.subCategory" render={({ field }) => (
-                        <FormItem><FormLabel>Sub-Category</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!selectedCategory}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select sub-category" /></SelectTrigger></FormControl>
-                                <SelectContent>{selectedCategory && subCategories[selectedCategory]?.map(sc => <SelectItem key={sc} value={sc}>{sc}</SelectItem>)}</SelectContent>
-                            </Select>
-                        <FormMessage /></FormItem>
+                    <FormField control={form.control} name="newProduct.batchNumber" render={({ field }) => (
+                        <FormItem><FormLabel>Batch Number</FormLabel><FormControl><Input placeholder="e.g. BATCH123" {...field} /></FormControl><FormMessage /></FormItem>
                     )}/>
                 </div>
                  <div className="grid md:grid-cols-2 gap-4">

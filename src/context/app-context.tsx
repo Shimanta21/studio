@@ -27,6 +27,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
       name: productData.name,
       category: productData.category,
       subCategory: productData.subCategory,
+      batchNumber: productData.batchNumber,
       price: productData.price,
       expiryDate: productData.expiryDate,
       stockInHand: productData.initialStock,

@@ -68,7 +68,7 @@ export default function InventoryPage() {
                 <TableRow key={product.id}>
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell>{product.category}</TableCell>
-                  <TableCell><Badge variant="secondary">{product.subCategory}</Badge></TableCell>
+                  <TableCell>{product.subCategory && <Badge variant="secondary">{product.subCategory}</Badge>}</TableCell>
                   <TableCell className="text-right">{product.stockInHand}</TableCell>
                   <TableCell className="text-right">{product.itemsSold}</TableCell>
                   <TableCell>{product.expiryDate || 'N/A'}</TableCell>

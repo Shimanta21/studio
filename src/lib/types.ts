@@ -6,7 +6,8 @@ export type Product = {
   id: string;
   name: string;
   category: Category;
-  subCategory: SubCategory;
+  subCategory?: SubCategory;
+  batchNumber: string;
   stockInHand: number;
   itemsSold: number;
   price: number;
