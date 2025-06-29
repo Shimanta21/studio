@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import type { Product, Sale } from '@/lib/types';
+import type { Product, Sale, Customer } from '@/lib/types';
 import { format } from 'date-fns';
 import { db, auth } from '@/lib/firebase';
 import {
@@ -40,12 +40,14 @@ interface BulkSaleData {
 interface AppContextType {
   products: Product[];
   sales: Sale[];
+  customers: Customer[];
   isLoading: boolean;
   appInitialized: boolean;
   user: User | null;
   addProduct: (product: Omit<Product, 'id' | 'stockInHand' | 'itemsSold' | 'receivedLog'> & { initialStock: number }) => Promise<void>;
   addStock: (productId: string, quantity: number, date: Date) => Promise<void>;
   addBulkSale: (saleData: BulkSaleData) => Promise<void>;
+  addCustomer: (customerData: Omit<Customer, 'id'>) => Promise<void>;
   getDailySales: (date: Date) => Sale[];
   signIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
@@ -56,6 +58,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppContextProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [appInitialized, setAppInitialized] = useState(false);
@@ -71,6 +74,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
        if(!user) {
         setProducts([]);
         setSales([]);
+        setCustomers([]);
         setIsLoading(false);
       }
     });
@@ -93,6 +97,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
     
     setIsLoading(true);
 
+    // Check if database is empty and seed if necessary
     const productsCollectionRef = collection(db, 'products');
     getDocs(productsCollectionRef).then(async (snapshot) => {
       if (snapshot.empty) {
@@ -123,9 +128,19 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
         toast({ variant: 'destructive', title: "Database Error", description: "Could not fetch sales."});
     });
 
+    const customersQuery = query(collection(db, 'customers'), orderBy('name', 'asc'));
+    const unsubscribeCustomers = onSnapshot(customersQuery, (querySnapshot) => {
+        const customersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+        setCustomers(customersData);
+    }, (error) => {
+        console.error("Error fetching customers: ", error);
+        toast({ variant: 'destructive', title: "Database Error", description: "Could not fetch customers."});
+    });
+
     return () => {
         unsubscribeProducts();
         unsubscribeSales();
+        unsubscribeCustomers();
     };
   }, [user, toast]);
 
@@ -213,6 +228,16 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
     }
   }, [products, toast]);
 
+  const addCustomer = useCallback(async (customerData: Omit<Customer, 'id'>) => {
+    try {
+        await addDoc(collection(db, 'customers'), customerData);
+    } catch (error) {
+        console.error("Error adding customer: ", error);
+        toast({ variant: 'destructive', title: "Error", description: "Could not add the new customer."});
+        throw error; // re-throw to be caught by the form handler
+    }
+  }, [toast]);
+
   const getDailySales = useCallback((date: Date) => {
     const formattedDate = format(date, 'yyyy-MM-dd');
     return sales.filter(s => s.saleDate === formattedDate);
@@ -221,16 +246,18 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({
     products,
     sales,
+    customers,
     isLoading,
     appInitialized,
     user,
     addProduct,
     addStock,
     addBulkSale,
+    addCustomer,
     getDailySales,
     signIn,
     logOut
-  }), [products, sales, isLoading, appInitialized, user, addProduct, addStock, addBulkSale, getDailySales, signIn, logOut]);
+  }), [products, sales, customers, isLoading, appInitialized, user, addProduct, addStock, addBulkSale, addCustomer, getDailySales, signIn, logOut]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

@@ -1,6 +1,6 @@
 import { collection, writeBatch, doc, type Firestore } from 'firebase/firestore';
 import { format, subDays, addDays } from 'date-fns';
-import type { Sale, Product } from '@/lib/types';
+import type { Sale, Product, Customer } from '@/lib/types';
 
 // We use custom IDs to easily link sales to products.
 const PRODUCT_IDS = {
@@ -170,6 +170,82 @@ const salesToSeed: Omit<Sale, 'id'>[] = [
 ];
 
 
+// --- CUSTOMERS ---
+const customersToSeed: Omit<Customer, 'id'>[] = [
+  {
+    name: 'Ravi Kumar',
+    phoneNumber: '9876543210',
+    whatsappNumber: '9876543210',
+    email: 'ravi.k@example.com',
+    pets: [
+      { species: 'Dog', breed: 'Labrador Retriever', count: 1 },
+    ]
+  },
+  {
+    name: 'Priya Sharma',
+    phoneNumber: '9876543211',
+    email: 'priya.s@example.com',
+    pets: [
+      { species: 'Cat', breed: 'Siamese', count: 2 },
+      { species: 'Dog', breed: 'Golden Retriever', count: 1 }
+    ]
+  },
+  {
+    name: 'Anjali Verma',
+    phoneNumber: '9876543212',
+    whatsappNumber: '9876543212',
+    email: 'anjali.v@example.com',
+    pets: [
+      { species: 'Cat', breed: 'Persian', count: 1 },
+    ]
+  },
+  {
+    name: 'Suresh Gupta',
+    phoneNumber: '9876543213',
+    pets: [
+      { species: 'Dog', breed: 'German Shepherd', count: 1 },
+    ]
+  },
+  {
+    name: 'Amit Singh',
+    phoneNumber: '9876543214',
+    email: 'amit.s@example.com',
+    pets: [
+        { species: 'Dog', breed: 'Pug', count: 2 }
+    ]
+  },
+  {
+    name: 'Sunita Rao',
+    phoneNumber: '9876543215',
+    pets: [
+        { species: 'Dog', breed: 'Beagle', count: 1 }
+    ]
+  },
+    {
+    name: 'Vikram Mehta',
+    phoneNumber: '9876543216',
+    email: 'vikram.m@example.com',
+    pets: [
+        { species: 'Parrot', breed: 'Macaw', count: 2 }
+    ]
+  },
+  {
+    name: 'Rina Desai',
+    phoneNumber: '9876543217',
+    pets: [
+        { species: 'Cat', breed: 'Maine Coon', count: 1 }
+    ]
+  },
+  {
+    name: 'Deepak Kumar',
+    phoneNumber: '9876543218',
+    whatsappNumber: '9876543218',
+    pets: [
+        { species: 'Rabbit', breed: 'Holland Lop', count: 3 }
+    ]
+  }
+];
+
 export async function seedDatabase(db: Firestore) {
   const batch = writeBatch(db);
 
@@ -184,6 +260,12 @@ export async function seedDatabase(db: Firestore) {
   salesToSeed.forEach(sale => {
     const docRef = doc(collection(db, 'sales'));
     batch.set(docRef, sale);
+  });
+
+  // Set Customers
+  customersToSeed.forEach(customer => {
+    const docRef = doc(collection(db, 'customers'));
+    batch.set(docRef, customer);
   });
 
   try {

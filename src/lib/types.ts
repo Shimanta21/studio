@@ -22,3 +22,18 @@ export type Sale = {
   saleDate: string; // YYYY-MM-DD
   totalAmount: number;
 };
+
+export type Pet = {
+  species: string;
+  breed: string;
+  count: number;
+};
+
+export type Customer = {
+  id: string;
+  name: string;
+  phoneNumber: string;
+  whatsappNumber?: string;
+  email?: string;
+  pets: Pet[];
+};
