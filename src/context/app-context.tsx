@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import type { Product, Sale } from '@/lib/types';
 import { format } from 'date-fns';
 import { db } from '@/lib/firebase';
@@ -17,6 +17,7 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { seedDatabase } from '@/lib/seed';
 
 interface BulkSaleData {
     customerName: string;
@@ -45,10 +46,22 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   const [sales, setSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const seedingRef = useRef(false);
 
   useEffect(() => {
     const q = query(collection(db, 'products'), orderBy('name', 'asc'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+      if (querySnapshot.empty && !seedingRef.current) {
+        seedingRef.current = true;
+        setIsLoading(true);
+        console.log("Empty database detected, seeding with mock data...");
+        toast({ title: "Welcome!", description: "Setting up sample data for you..." });
+        await seedDatabase(db);
+        toast({ title: "Setup Complete!", description: "Sample data has been added to your database." });
+        // The listener will be automatically called again with the new data.
+        return;
+      }
+
       const productsData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
