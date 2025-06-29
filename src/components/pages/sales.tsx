@@ -15,9 +15,10 @@ import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { CalendarIcon, PlusCircle, Trash2, Send, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
+import { CalendarIcon, PlusCircle, Trash2, Send, Sparkles, Loader2, AlertTriangle, Check, ChevronsUpDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSalesNotification } from '@/ai/flows/generate-sales-notification';
 
@@ -58,6 +59,7 @@ export default function SalesPage() {
     message: null as string | null,
     error: null as string | null,
   });
+  const [isCustomerComboboxOpen, setIsCustomerComboboxOpen] = React.useState(false);
 
   const form = useForm<z.infer<typeof salesFormSchema>>({
     resolver: zodResolver(salesFormSchema),
@@ -222,22 +224,57 @@ export default function SalesPage() {
                       control={form.control}
                       name="customerName"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="flex flex-col">
                           <FormLabel>Customer Name</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a customer" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {customers.map((customer) => (
-                                <SelectItem key={customer.id} value={customer.name}>
-                                  {customer.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Popover open={isCustomerComboboxOpen} onOpenChange={setIsCustomerComboboxOpen}>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  className={cn(
+                                    "w-full justify-between",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value
+                                    ? customers.find(
+                                        (customer) => customer.name === field.value
+                                      )?.name
+                                    : "Select a customer"}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Search customers..." />
+                                <CommandList>
+                                  <CommandEmpty>No customer found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {customers.map((customer) => (
+                                      <CommandItem
+                                        key={customer.id}
+                                        value={customer.name}
+                                        onSelect={() => {
+                                          form.setValue("customerName", customer.name)
+                                          setIsCustomerComboboxOpen(false)
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            customer.name === field.value ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        {customer.name}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                           <FormMessage />
                         </FormItem>
                       )}
