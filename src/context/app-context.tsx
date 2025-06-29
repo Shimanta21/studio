@@ -9,7 +9,6 @@ import { db, auth } from '@/lib/firebase';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signOut,
   type User,
 } from 'firebase/auth';
@@ -49,7 +48,6 @@ interface AppContextType {
   addBulkSale: (saleData: BulkSaleData) => Promise<void>;
   getDailySales: (date: Date) => Sale[];
   signIn: (email: string, pass: string) => Promise<void>;
-  signUp: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
 }
 
@@ -133,10 +131,6 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, pass: string) => {
       await signInWithEmailAndPassword(auth, email, pass);
-  }, []);
-
-  const signUp = useCallback(async (email: string, pass: string) => {
-      await createUserWithEmailAndPassword(auth, email, pass);
   }, []);
 
   const logOut = useCallback(async () => {
@@ -235,9 +229,8 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
     addBulkSale,
     getDailySales,
     signIn,
-    signUp,
     logOut
-  }), [products, sales, isLoading, appInitialized, user, addProduct, addStock, addBulkSale, getDailySales, signIn, signUp, logOut]);
+  }), [products, sales, isLoading, appInitialized, user, addProduct, addStock, addBulkSale, getDailySales, signIn, logOut]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

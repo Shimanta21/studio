@@ -15,12 +15,11 @@ import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  password: z.string().min(1, { message: 'Password is required.' }),
 });
 
 export default function LoginPage() {
-  const { signIn, signUp, isLoading, appInitialized } = useApp();
-  const [isLoginView, setIsLoginView] = useState(true);
+  const { signIn, isLoading, appInitialized } = useApp();
   const [authError, setAuthError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -32,13 +31,8 @@ export default function LoginPage() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setAuthError(null);
     try {
-      if (isLoginView) {
-        await signIn(values.email, values.password);
-        toast({ title: 'Login Successful', description: "Welcome back!" });
-      } else {
-        await signUp(values.email, values.password);
-        toast({ title: 'Account Created', description: "You have successfully signed up." });
-      }
+      await signIn(values.email, values.password);
+      toast({ title: 'Login Successful', description: "Welcome back!" });
     } catch (error: any) {
       let message = 'An unknown error occurred.';
       if (error.code) {
@@ -47,12 +41,6 @@ export default function LoginPage() {
           case 'auth/invalid-credential':
           case 'auth/wrong-password':
             message = 'Invalid email or password.';
-            break;
-          case 'auth/email-already-in-use':
-            message = 'An account with this email already exists.';
-            break;
-          case 'auth/weak-password':
-            message = 'Password is too weak. It must be at least 6 characters.';
             break;
           default:
             message = 'Failed to authenticate. Please try again.';
@@ -67,9 +55,9 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <Logo className="h-12 w-auto mx-auto mb-4" />
-          <CardTitle>{isLoginView ? 'Welcome Back' : 'Create an Account'}</CardTitle>
+          <CardTitle>Welcome Back</CardTitle>
           <CardDescription>
-            {isLoginView ? 'Sign in to manage your inventory' : 'Enter your details to get started'}
+            Sign in to manage your inventory
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -104,19 +92,13 @@ export default function LoginPage() {
               {authError && <p className="text-sm font-medium text-destructive">{authError}</p>}
               <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || !appInitialized}>
                 {(form.formState.isSubmitting || isLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isLoginView ? 'Sign In' : 'Sign Up'}
+                Sign In
               </Button>
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="flex justify-center">
-          <Button variant="link" onClick={() => {
-            setIsLoginView(!isLoginView);
-            setAuthError(null);
-            form.reset();
-          }}>
-            {isLoginView ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
-          </Button>
+        <CardFooter className="flex justify-center text-center text-sm text-muted-foreground">
+           <p>Please use the credentials created in the Firebase Console to sign in.</p>
         </CardFooter>
       </Card>
     </div>
