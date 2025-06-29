@@ -223,7 +223,7 @@ export default function StockEntryPage() {
                 )}/>
                  <div className="grid md:grid-cols-2 gap-4">
                      <FormField control={form.control} name="newProduct.price" render={({ field }) => (
-                        <FormItem><FormLabel>Price ($)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Price (₹)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>
                     )}/>
                     <FormField control={form.control} name="newProduct.expiryDate" render={({ field }) => (
                         <FormItem><FormLabel>Expiry Date (Optional)</FormLabel>

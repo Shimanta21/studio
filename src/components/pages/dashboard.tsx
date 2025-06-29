@@ -7,7 +7,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from '
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useApp } from '@/context/app-context';
 import { format, subDays, startOfDay } from 'date-fns';
-import { DollarSign, Package, ShoppingCart, ArrowUpRight, TrendingUp } from 'lucide-react';
+import { IndianRupee, Package, ShoppingCart, ArrowUpRight, TrendingUp } from 'lucide-react';
 
 const chartConfig = {
   sales: {
@@ -44,10 +44,10 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Today's Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <IndianRupee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${todaysRevenue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">₹{todaysRevenue.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">Total sales for today</p>
           </CardContent>
         </Card>
@@ -100,7 +100,7 @@ export default function DashboardPage() {
                   tickFormatter={(value) => value.slice(0, 3)}
                 />
                 <YAxis
-                  tickFormatter={(value) => `$${value}`}
+                  tickFormatter={(value) => `₹${value}`}
                   tickLine={false}
                   axisLine={false}
                   tickMargin={10}
@@ -130,7 +130,7 @@ export default function DashboardPage() {
                     <TableRow key={sale.id}>
                       <TableCell className="font-medium">{sale.productName}</TableCell>
                       <TableCell className="text-right">{sale.quantity}</TableCell>
-                      <TableCell className="text-right">${sale.totalAmount.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">₹{sale.totalAmount.toFixed(2)}</TableCell>
                     </TableRow>
                   )) : (
                     <TableRow>
