@@ -1,0 +1,11 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/favicon.ico/route": "/favicon.ico",
+  "/customers/page": "/customers",
+  "/inventory/page": "/inventory",
+  "/login/page": "/login",
+  "/page": "/",
+  "/sales/page": "/sales",
+  "/notifications/page": "/notifications",
+  "/stock-entry/page": "/stock-entry"
+}
