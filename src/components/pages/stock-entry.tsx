@@ -31,6 +31,7 @@ const stockFormSchema = z.object({
     price: z.coerce.number(),
     category: z.string(),
     batchNumber: z.string().min(1, 'Batch number is required.'),
+    source: z.string().optional(),
     expiryDate: z.date().optional(),
   }).optional(),
 });
@@ -60,6 +61,7 @@ export default function StockEntryPage() {
         price: 0,
         category: undefined,
         batchNumber: '',
+        source: '',
       }
     },
   });
@@ -71,6 +73,7 @@ export default function StockEntryPage() {
           price: values.newProduct.price,
           category: values.newProduct.category as Category,
           batchNumber: values.newProduct.batchNumber,
+          source: values.newProduct.source,
           initialStock: values.quantity,
           expiryDate: values.newProduct.expiryDate ? format(values.newProduct.expiryDate, 'yyyy-MM-dd') : undefined,
       });
@@ -152,6 +155,9 @@ export default function StockEntryPage() {
                         <FormItem><FormLabel>Batch Number</FormLabel><FormControl><Input placeholder="e.g. BATCH123" {...field} /></FormControl><FormMessage /></FormItem>
                     )}/>
                 </div>
+                 <FormField control={form.control} name="newProduct.source" render={({ field }) => (
+                    <FormItem><FormLabel>Source (Supplier)</FormLabel><FormControl><Input placeholder="e.g. Vet Supplies Inc." {...field} /></FormControl><FormMessage /></FormItem>
+                )}/>
                  <div className="grid md:grid-cols-2 gap-4">
                      <FormField control={form.control} name="newProduct.price" render={({ field }) => (
                         <FormItem><FormLabel>Price ($)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>

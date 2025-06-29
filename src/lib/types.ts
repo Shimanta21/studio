@@ -1,13 +1,11 @@
 export type Category = "Medicines & Pet Foods" | "Vaccines" | "Accessories";
 
-export type SubCategory = "Canine" | "Poultry" | "Misc" | "Expiry" | "Non-expiry";
-
 export type Product = {
   id: string;
   name: string;
   category: Category;
-  subCategory?: SubCategory;
   batchNumber: string;
+  source?: string;
   stockInHand: number;
   itemsSold: number;
   price: number;

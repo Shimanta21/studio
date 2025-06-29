@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useState, useMemo } from 'react';
 import { MOCK_PRODUCTS, MOCK_SALES } from '@/lib/mock-data';
-import type { Product, Sale, Category, SubCategory } from '@/lib/types';
+import type { Product, Sale, Category } from '@/lib/types';
 import { format } from 'date-fns';
 
 interface AppContextType {
@@ -26,7 +26,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
       id: `prod_${Date.now()}`,
       name: productData.name,
       category: productData.category,
-      subCategory: productData.subCategory,
+      source: productData.source,
       batchNumber: productData.batchNumber,
       price: productData.price,
       expiryDate: productData.expiryDate,

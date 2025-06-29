@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Category } from '@/lib/types';
-import { Badge } from '@/components/ui/badge';
 import { Search } from 'lucide-react';
 
 const allCategories: Category[] = ["Medicines & Pet Foods", "Vaccines", "Accessories"];
@@ -57,7 +56,8 @@ export default function InventoryPage() {
               <TableRow>
                 <TableHead>Product Name</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>Sub-Category</TableHead>
+                <TableHead>Batch Number</TableHead>
+                <TableHead>Source (Supplier)</TableHead>
                 <TableHead className="text-right">Stock in Hand</TableHead>
                 <TableHead className="text-right">Items Sold</TableHead>
                 <TableHead>Expiry Date</TableHead>
@@ -68,14 +68,15 @@ export default function InventoryPage() {
                 <TableRow key={product.id}>
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell>{product.category}</TableCell>
-                  <TableCell>{product.subCategory && <Badge variant="secondary">{product.subCategory}</Badge>}</TableCell>
+                  <TableCell>{product.batchNumber}</TableCell>
+                  <TableCell>{product.source || 'N/A'}</TableCell>
                   <TableCell className="text-right">{product.stockInHand}</TableCell>
                   <TableCell className="text-right">{product.itemsSold}</TableCell>
                   <TableCell>{product.expiryDate || 'N/A'}</TableCell>
                 </TableRow>
               )) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center h-24">No products found.</TableCell>
+                  <TableCell colSpan={7} className="text-center h-24">No products found.</TableCell>
                 </TableRow>
               )}
             </TableBody>
