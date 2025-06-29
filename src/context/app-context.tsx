@@ -23,6 +23,7 @@ import {
   query,
   orderBy,
   getDocs,
+  deleteDoc,
 } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { seedDatabase } from '@/lib/seed';
@@ -51,6 +52,8 @@ interface AppContextType {
   getDailySales: (date: Date) => Sale[];
   signIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
+  updateProduct: (productId: string, data: Partial<Omit<Product, 'id' | 'receivedLog' | 'stockInHand' | 'itemsSold'>>) => Promise<void>;
+  deleteProduct: (productId: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -238,6 +241,40 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
     }
   }, [toast]);
 
+  const updateProduct = useCallback(async (productId: string, data: Partial<Omit<Product, 'id' | 'receivedLog' | 'stockInHand' | 'itemsSold'>>) => {
+    const productRef = doc(db, 'products', productId);
+    try {
+        await updateDoc(productRef, data);
+        toast({ title: "Product Updated", description: "The product details have been saved." });
+    } catch (error) {
+        console.error("Error updating product: ", error);
+        toast({ variant: 'destructive', title: "Error", description: "Could not update the product."});
+        throw error;
+    }
+  }, [toast]);
+
+  const deleteProduct = useCallback(async (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    if (product && product.itemsSold > 0) {
+        toast({
+            variant: 'destructive',
+            title: "Deletion Failed",
+            description: "Cannot delete a product with a sales history.",
+        });
+        return;
+    }
+
+    const productRef = doc(db, 'products', productId);
+    try {
+        await deleteDoc(productRef);
+        toast({ title: "Product Deleted", description: "The product has been removed from inventory." });
+    } catch (error) {
+        console.error("Error deleting product: ", error);
+        toast({ variant: 'destructive', title: "Error", description: "Could not delete the product."});
+        throw error;
+    }
+  }, [products, toast]);
+
   const getDailySales = useCallback((date: Date) => {
     const formattedDate = format(date, 'yyyy-MM-dd');
     return sales.filter(s => s.saleDate === formattedDate);
@@ -256,8 +293,10 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
     addCustomer,
     getDailySales,
     signIn,
-    logOut
-  }), [products, sales, customers, isLoading, appInitialized, user, addProduct, addStock, addBulkSale, addCustomer, getDailySales, signIn, logOut]);
+    logOut,
+    updateProduct,
+    deleteProduct,
+  }), [products, sales, customers, isLoading, appInitialized, user, addProduct, addStock, addBulkSale, addCustomer, getDailySales, signIn, logOut, updateProduct, deleteProduct]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
