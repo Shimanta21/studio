@@ -141,9 +141,19 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithRedirect(auth, provider);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error signing in with Google: ", error);
-      toast({ variant: 'destructive', title: "Sign-in Error", description: "Could not sign in with Google."});
+      let description = "Could not sign in with Google.";
+      if (error.code === 'auth/operation-not-allowed') {
+        description = "Google Sign-In is not enabled for this project. Please enable it in the Firebase console (Authentication > Sign-in method).";
+      } else if (error.message) {
+        description = error.message;
+      }
+      toast({
+        variant: 'destructive',
+        title: 'Sign-in Error',
+        description,
+      });
       setIsLoading(false);
     }
   }, [toast]);
@@ -152,9 +162,9 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
     try {
       await firebaseSignOut(auth);
       router.push('/login');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error signing out: ", error);
-      toast({ variant: 'destructive', title: "Sign-out Error", description: "Could not sign out."});
+      toast({ variant: 'destructive', title: "Sign-out Error", description: error.message || "Could not sign out."});
     }
   }, [router, toast]);
 
