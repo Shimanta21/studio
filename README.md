@@ -26,3 +26,16 @@ const firebaseConfig = {
   appId: "1:12345..."
 };
 ```
+
+## Creating a User for Login
+
+Since this is a single-user application without a public sign-up page, you need to create your user credentials directly in the Firebase console.
+
+1.  **Go to Firebase Console**: Navigate to [https://console.firebase.google.com/](https://console.firebase.google.com/) and select your project.
+2.  **Open Authentication**: In the left-hand navigation menu, under "Build", click on **Authentication**.
+3.  **Go to the Users Tab**: Inside the Authentication section, make sure you are on the **Users** tab.
+4.  **Add User**: Click the **Add user** button.
+5.  **Enter Credentials**: A dialog box will appear. Enter the **email** and a secure **password** that you will use to log into the application.
+6.  **Confirm**: Click **Add user** to create the account.
+
+Once the user is created, you can use these credentials on the application's login page.
