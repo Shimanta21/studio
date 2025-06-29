@@ -15,6 +15,7 @@ import {
   increment,
   query,
   orderBy,
+  getDocs,
 } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { seedDatabase } from '@/lib/seed';
@@ -46,35 +47,50 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   const [sales, setSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const seedingRef = useRef(false);
+  const initRef = useRef(false);
 
   useEffect(() => {
-    setIsLoading(true);
+    // This ref prevents the effect from running twice in development strict mode.
+    if (initRef.current) return;
+    initRef.current = true;
 
+    // First, check if the database is empty and seed it if necessary.
+    const productsCollectionRef = collection(db, 'products');
+    getDocs(productsCollectionRef)
+      .then(async (snapshot) => {
+        if (snapshot.empty) {
+          console.log("Empty database detected, seeding with mock data...");
+          toast({ title: "Welcome!", description: "Setting up sample data for you..." });
+          await seedDatabase(db);
+          toast({ title: "Setup Complete!", description: "Sample data has been added to your database." });
+        }
+      })
+      .catch((error) => {
+        console.error("Database connection error during initial check: ", error);
+        toast({
+          variant: 'destructive',
+          title: 'Database Connection Error',
+          description: 'Could not connect. Please check your Firebase config and security rules.',
+        });
+        setIsLoading(false); // Stop loading on error
+      });
+      
+    // Set up real-time listeners for products
     const productsQuery = query(collection(db, 'products'), orderBy('name', 'asc'));
-    const unsubscribeProducts = onSnapshot(productsQuery, async (querySnapshot) => {
-      if (querySnapshot.empty && !seedingRef.current) {
-        seedingRef.current = true;
-        setIsLoading(true);
-        console.log("Empty database detected, seeding with mock data...");
-        toast({ title: "Welcome!", description: "Setting up sample data for you..." });
-        await seedDatabase(db);
-        toast({ title: "Setup Complete!", description: "Sample data has been added to your database." });
-        return;
-      }
-
+    const unsubscribeProducts = onSnapshot(productsQuery, (querySnapshot) => {
       const productsData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
       } as Product));
       setProducts(productsData);
-      setIsLoading(false);
+      setIsLoading(false); // Set loading to false once we get the first snapshot
     }, (error) => {
       console.error("Error fetching products: ", error);
       toast({ variant: 'destructive', title: "Database Error", description: "Could not fetch products."});
       setIsLoading(false);
     });
 
+    // Set up real-time listeners for sales
     const salesQuery = query(collection(db, 'sales'), orderBy('saleDate', 'desc'));
     const unsubscribeSales = onSnapshot(salesQuery, (querySnapshot) => {
       const salesData = querySnapshot.docs.map(doc => ({
@@ -87,6 +103,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
         toast({ variant: 'destructive', title: "Database Error", description: "Could not fetch sales."});
     });
 
+    // Cleanup function to unsubscribe from listeners when the component unmounts
     return () => {
         unsubscribeProducts();
         unsubscribeSales();
