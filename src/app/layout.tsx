@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { AppContextProvider } from '@/context/app-context';
 import { Toaster } from '@/components/ui/toaster';
-import { AppLayout } from '@/components/app-layout';
+import { AuthWrapper } from '@/components/auth-wrapper';
 
 export const metadata: Metadata = {
   title: 'StockPilot',
@@ -23,9 +23,9 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AppContextProvider>
-            <AppLayout>
+            <AuthWrapper>
               {children}
-            </AppLayout>
+            </AuthWrapper>
             <Toaster />
         </AppContextProvider>
       </body>

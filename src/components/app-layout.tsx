@@ -14,6 +14,16 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
 import {
   LayoutDashboard,
@@ -21,7 +31,8 @@ import {
   PlusSquare,
   ShoppingCart,
   Bell,
-  Loader2,
+  User as UserIcon,
+  LogOut,
 } from 'lucide-react';
 import { useApp } from '@/context/app-context';
 
@@ -35,7 +46,7 @@ const menuItems = [
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { isLoading } = useApp();
+  const { user, logOut } = useApp();
 
   return (
     <SidebarProvider>
@@ -69,15 +80,35 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 {menuItems.find(item => item.href === pathname)?.label || 'StockPilot'}
              </h1>
            </div>
+           <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                  <Avatar className="h-9 w-9">
+                    <AvatarFallback>
+                      <UserIcon className="h-5 w-5" />
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">Signed In</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user?.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
         </header>
         <main className="flex-1 p-4 md:p-6 lg:p-8">
-            {isLoading ? (
-                <div className="flex justify-center items-center h-full w-full">
-                    <Loader2 className="h-16 w-16 animate-spin text-primary" />
-                </div>
-            ) : (
-                children
-            )}
+            {children}
         </main>
       </SidebarInset>
     </SidebarProvider>

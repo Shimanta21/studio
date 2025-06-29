@@ -1,36 +1,123 @@
 'use client';
 
+import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { useApp } from '@/context/app-context';
 import { Loader2 } from 'lucide-react';
 import { Logo } from '@/components/logo';
+import { useToast } from '@/hooks/use-toast';
+
+const formSchema = z.object({
+  email: z.string().email({ message: 'Please enter a valid email.' }),
+  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+});
 
 export default function LoginPage() {
-  const { signInWithGoogle, isLoading } = useApp();
+  const { signIn, signUp, isLoading, appInitialized } = useApp();
+  const [isLoginView, setIsLoginView] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: { email: '', password: '' },
+  });
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setAuthError(null);
+    try {
+      if (isLoginView) {
+        await signIn(values.email, values.password);
+        toast({ title: 'Login Successful', description: "Welcome back!" });
+      } else {
+        await signUp(values.email, values.password);
+        toast({ title: 'Account Created', description: "You have successfully signed up." });
+      }
+    } catch (error: any) {
+      let message = 'An unknown error occurred.';
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/user-not-found':
+          case 'auth/invalid-credential':
+          case 'auth/wrong-password':
+            message = 'Invalid email or password.';
+            break;
+          case 'auth/email-already-in-use':
+            message = 'An account with this email already exists.';
+            break;
+          case 'auth/weak-password':
+            message = 'Password is too weak. It must be at least 6 characters.';
+            break;
+          default:
+            message = 'Failed to authenticate. Please try again.';
+        }
+      }
+      setAuthError(message);
+    }
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <Logo className="h-12 w-auto mx-auto mb-4" />
-          <CardTitle>Welcome to StockPilot</CardTitle>
-          <CardDescription>Sign in to manage your inventory</CardDescription>
+          <CardTitle>{isLoginView ? 'Welcome Back' : 'Create an Account'}</CardTitle>
+          <CardDescription>
+            {isLoginView ? 'Sign in to manage your inventory' : 'Enter your details to get started'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button
-            className="w-full"
-            onClick={signInWithGoogle}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-                <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 61.9l-76.2 64.5C307.4 99.8 280.7 86 248 86c-84.3 0-152.3 67.8-152.3 151.4s68 151.4 152.3 151.4c97.9 0 130.4-75.5 134.5-114.3H248v-85.3h236.1c2.3 12.7 3.9 26.9 3.9 41.4z"></path></svg>
-            )}
-            Sign in with Google
-          </Button>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="name@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {authError && <p className="text-sm font-medium text-destructive">{authError}</p>}
+              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || !appInitialized}>
+                {(form.formState.isSubmitting || isLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isLoginView ? 'Sign In' : 'Sign Up'}
+              </Button>
+            </form>
+          </Form>
         </CardContent>
+        <CardFooter className="flex justify-center">
+          <Button variant="link" onClick={() => {
+            setIsLoginView(!isLoginView);
+            setAuthError(null);
+            form.reset();
+          }}>
+            {isLoginView ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );

@@ -1,10 +1,18 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import React, { createContext, useContext, useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import type { Product, Sale } from '@/lib/types';
 import { format } from 'date-fns';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  type User,
+} from 'firebase/auth';
 import {
   collection,
   onSnapshot,
@@ -34,10 +42,15 @@ interface AppContextType {
   products: Product[];
   sales: Sale[];
   isLoading: boolean;
+  appInitialized: boolean;
+  user: User | null;
   addProduct: (product: Omit<Product, 'id' | 'stockInHand' | 'itemsSold' | 'receivedLog'> & { initialStock: number }) => Promise<void>;
   addStock: (productId: string, quantity: number, date: Date) => Promise<void>;
   addBulkSale: (saleData: BulkSaleData) => Promise<void>;
   getDailySales: (date: Date) => Sale[];
+  signIn: (email: string, pass: string) => Promise<void>;
+  signUp: (email: string, pass: string) => Promise<void>;
+  logOut: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -46,70 +59,89 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [appInitialized, setAppInitialized] = useState(false);
+  
   const { toast } = useToast();
-  const initRef = useRef(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    // This ref prevents the effect from running twice in development strict mode.
-    if (initRef.current) return;
-    initRef.current = true;
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setAppInitialized(true);
+       if(!user) {
+        setProducts([]);
+        setSales([]);
+        setIsLoading(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+  
+  useEffect(() => {
+    if (appInitialized) {
+      const isAuthPage = pathname === '/login';
+      if (!user && !isAuthPage) {
+        router.push('/login');
+      } else if (user && isAuthPage) {
+        router.push('/');
+      }
+    }
+  }, [user, appInitialized, pathname, router]);
 
-    // First, check if the database is empty and seed it if necessary.
+  useEffect(() => {
+    if (!user) return; // Don't fetch data if there's no user
+    
+    setIsLoading(true);
+
     const productsCollectionRef = collection(db, 'products');
-    getDocs(productsCollectionRef)
-      .then(async (snapshot) => {
-        if (snapshot.empty) {
-          console.log("Empty database detected, seeding with mock data...");
-          toast({ title: "Welcome!", description: "Setting up sample data for you..." });
-          await seedDatabase(db);
-          toast({ title: "Setup Complete!", description: "Sample data has been added to your database." });
-        }
-      })
-      .catch((error) => {
-        console.error("Database connection error during initial check: ", error);
-        toast({
-          variant: 'destructive',
-          title: 'Database Connection Error',
-          description: 'Could not connect. Please check your Firebase config and security rules.',
-        });
-        setIsLoading(false); // Stop loading on error
-      });
-      
-    // Set up real-time listeners for products
+    getDocs(productsCollectionRef).then(async (snapshot) => {
+      if (snapshot.empty) {
+        console.log("Empty database detected, seeding with mock data...");
+        toast({ title: "Welcome!", description: "Setting up sample data for you..." });
+        await seedDatabase(db);
+        toast({ title: "Setup Complete!", description: "Sample data has been added to your database." });
+      }
+    });
+
     const productsQuery = query(collection(db, 'products'), orderBy('name', 'asc'));
     const unsubscribeProducts = onSnapshot(productsQuery, (querySnapshot) => {
-      const productsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      } as Product));
+      const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
       setProducts(productsData);
-      setIsLoading(false); // Set loading to false once we get the first snapshot
+      setIsLoading(false);
     }, (error) => {
       console.error("Error fetching products: ", error);
       toast({ variant: 'destructive', title: "Database Error", description: "Could not fetch products."});
       setIsLoading(false);
     });
 
-    // Set up real-time listeners for sales
     const salesQuery = query(collection(db, 'sales'), orderBy('saleDate', 'desc'));
     const unsubscribeSales = onSnapshot(salesQuery, (querySnapshot) => {
-      const salesData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      } as Sale));
+      const salesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale));
       setSales(salesData);
     }, (error) => {
         console.error("Error fetching sales: ", error);
         toast({ variant: 'destructive', title: "Database Error", description: "Could not fetch sales."});
     });
 
-    // Cleanup function to unsubscribe from listeners when the component unmounts
     return () => {
         unsubscribeProducts();
         unsubscribeSales();
     };
-  }, [toast]);
+  }, [user, toast]);
 
+  const signIn = useCallback(async (email: string, pass: string) => {
+      await signInWithEmailAndPassword(auth, email, pass);
+  }, []);
+
+  const signUp = useCallback(async (email: string, pass: string) => {
+      await createUserWithEmailAndPassword(auth, email, pass);
+  }, []);
+
+  const logOut = useCallback(async () => {
+      await signOut(auth);
+  }, []);
 
   const addProduct = useCallback(async (productData: Omit<Product, 'id' | 'stockInHand' | 'itemsSold' | 'receivedLog'> & { initialStock: number }) => {
     try {
@@ -187,7 +219,6 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
     }
   }, [products, toast]);
 
-
   const getDailySales = useCallback((date: Date) => {
     const formattedDate = format(date, 'yyyy-MM-dd');
     return sales.filter(s => s.saleDate === formattedDate);
@@ -197,11 +228,16 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
     products,
     sales,
     isLoading,
+    appInitialized,
+    user,
     addProduct,
     addStock,
     addBulkSale,
     getDailySales,
-  }), [products, sales, isLoading, addProduct, addStock, addBulkSale, getDailySales]);
+    signIn,
+    signUp,
+    logOut
+  }), [products, sales, isLoading, appInitialized, user, addProduct, addStock, addBulkSale, getDailySales, signIn, signUp, logOut]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
