@@ -22,7 +22,6 @@ import { useToast } from '@/hooks/use-toast';
 const saleItemSchema = z.object({
   productName: z.string().min(1, { message: "Please select a product." }),
   productId: z.string().min(1, { message: "Please select a batch." }),
-  customerName: z.string().min(1, 'Customer name is required.'),
   quantity: z.coerce.number().min(1, 'Quantity must be at least 1.'),
   price: z.coerce.number().optional(),
 });
@@ -31,6 +30,7 @@ const salesFormSchema = z.object({
   saleDate: z.date({
     required_error: 'A sale date is required.',
   }),
+  customerName: z.string().min(1, 'Customer name is required.'),
   items: z.array(saleItemSchema).min(1, 'Please add at least one product.'),
 });
 
@@ -42,7 +42,8 @@ export default function SalesPage() {
     resolver: zodResolver(salesFormSchema),
     defaultValues: {
       saleDate: new Date(),
-      items: [{ productName: '', productId: '', customerName: '', quantity: 1, price: 0 }],
+      customerName: '',
+      items: [{ productName: '', productId: '', quantity: 1, price: 0 }],
     },
   });
 
@@ -82,17 +83,18 @@ export default function SalesPage() {
     if (hasError) return;
 
     values.items.forEach(item => {
-      addSale(item.productId, item.quantity, values.saleDate, item.customerName);
+      addSale(item.productId, item.quantity, values.saleDate, values.customerName);
     });
     
     const totalItems = values.items.reduce((sum, item) => sum + item.quantity, 0);
     toast({
       title: 'Sales Recorded Successfully',
-      description: `Recorded sales for ${values.items.length} product(s), totaling ${totalItems} items.`,
+      description: `Recorded sales for ${values.items.length} product(s), totaling ${totalItems} items for ${values.customerName}.`,
     });
     form.reset({
       saleDate: new Date(),
-      items: [{ productName: '', productId: '', customerName: '', quantity: 1, price: 0 }],
+      customerName: '',
+      items: [{ productName: '', productId: '', quantity: 1, price: 0 }],
     });
   }
   
@@ -110,7 +112,7 @@ export default function SalesPage() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <div className="max-w-xs">
+            <div className="grid md:grid-cols-2 gap-4 max-w-2xl">
                 <FormField
                 control={form.control}
                 name="saleDate"
@@ -146,6 +148,19 @@ export default function SalesPage() {
                   </FormItem>
                 )}
               />
+               <FormField
+                control={form.control}
+                name="customerName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Customer Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter customer name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <div className="space-y-4">
@@ -155,7 +170,7 @@ export default function SalesPage() {
                 
                 return (
                   <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 flex-1">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-1">
                       <FormField
                         control={form.control}
                         name={`items.${index}.productName`}
@@ -224,19 +239,6 @@ export default function SalesPage() {
                           </FormItem>
                         )}
                       />
-                       <FormField
-                        control={form.control}
-                        name={`items.${index}.customerName`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Customer Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter customer name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
                       <FormField
                         control={form.control}
                         name={`items.${index}.quantity`}
@@ -284,7 +286,7 @@ export default function SalesPage() {
                 <Button
                     type="button"
                     variant="outline"
-                    onClick={() => append({ productName: '', productId: '', customerName: '', quantity: 1, price: 0 })}
+                    onClick={() => append({ productName: '', productId: '', quantity: 1, price: 0 })}
                 >
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add Another Product
